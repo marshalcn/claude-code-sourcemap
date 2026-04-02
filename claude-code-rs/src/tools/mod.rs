@@ -1,5 +1,5 @@
 pub mod bash;
-pub mod file;
+pub mod file_ops;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -31,4 +31,4 @@ pub trait Tool: Send + Sync {
 }
 
 pub use bash::BashTool;
-pub use file::{FileReadTool, FileWriteTool, FileEditTool};
+pub use file_ops::{FileReadTool, FileWriteTool, FileEditTool, GlobTool, GrepTool};

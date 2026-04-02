@@ -45,6 +45,8 @@ async fn main() -> Result<()> {
     agent.register_tool(Box::new(tools::FileReadTool::new()));
     agent.register_tool(Box::new(tools::FileWriteTool::new()));
     agent.register_tool(Box::new(tools::FileEditTool::new()));
+    agent.register_tool(Box::new(tools::GlobTool::new()));
+    agent.register_tool(Box::new(tools::GrepTool::new()));
 
     // Run the main interactive loop or process single prompt
     if let Some(prompt) = cli.prompt {

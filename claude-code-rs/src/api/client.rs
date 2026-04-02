@@ -7,8 +7,6 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 pub struct Client {
     http_client: reqwest::Client,
-    #[allow(dead_code)]
-    api_key: String,
 }
 
 impl Client {
@@ -19,7 +17,7 @@ impl Client {
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         
         // Emulate typical headers to respect the official CLI behavior
-        headers.insert("anthropic-beta", HeaderValue::from_static("tools-2024-04-04"));
+        headers.insert("anthropic-beta", HeaderValue::from_static("tools-2024-05-16"));
 
         let http_client = reqwest::Client::builder()
             .default_headers(headers)
@@ -28,7 +26,6 @@ impl Client {
 
         Ok(Self {
             http_client,
-            api_key,
         })
     }
 
