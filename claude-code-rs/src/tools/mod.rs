@@ -1,5 +1,8 @@
 pub mod bash;
 pub mod file_ops;
+pub mod ask_user;
+pub mod web_fetch;
+pub mod notebook;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -32,3 +35,6 @@ pub trait Tool: Send + Sync {
 
 pub use bash::BashTool;
 pub use file_ops::{FileReadTool, FileWriteTool, FileEditTool, GlobTool, GrepTool};
+pub use ask_user::AskUserQuestionTool;
+pub use web_fetch::WebFetchTool;
+pub use notebook::NotebookEditTool;
