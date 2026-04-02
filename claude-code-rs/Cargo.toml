@@ -25,12 +25,14 @@ thiserror = "1.0"
 # Async traits for Tools/Plugins
 async-trait = "0.1"
 
-# Terminal UI (replacing React Ink)
-ratatui = "0.26"
-crossterm = "0.27"
-inquire = "0.7" # For simple prompts and selections
+# Terminal UI
+ratatui = "0.29.0" # Match the version used by tui-textarea
+crossterm = "0.28.1" # Match the version used by tui-textarea
+tui-textarea = { version = "0.7.0", features = ["crossterm", "ratatui"] }
+inquire = "0.7"
 
 # Logging & Tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio-util = "0.7.18"
 dirs = "6.0.0"
