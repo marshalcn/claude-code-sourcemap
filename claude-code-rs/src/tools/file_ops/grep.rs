@@ -20,12 +20,12 @@ struct GrepArgs {
 
 #[async_trait]
 impl Tool for GrepTool {
-    fn name(&self) -> &'static str { "Grep" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "Grep".into() }
     
-    fn description(&self) -> &'static str { 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
         "- A powerful search tool
 - Supports full regex syntax (e.g., \"log.*Error\", \"function\\s+\\w+\")
-- Filter files with glob parameter (e.g., \"*.js\", \"**/*.tsx\")" 
+- Filter files with glob parameter (e.g., \"*.js\", \"**/*.tsx\")".into() 
     }
 
     fn input_schema(&self) -> Value {

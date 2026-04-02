@@ -21,12 +21,10 @@ struct BashArgs {
 
 #[async_trait]
 impl Tool for BashTool {
-    fn name(&self) -> &'static str {
-        "bash"
-    }
-
-    fn description(&self) -> &'static str {
-        "Execute a bash command in the terminal. Useful for running scripts, checking git status, or running tests."
+    fn name(&self) -> std::borrow::Cow<'static, str> { "Bash".into() }
+    
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Executes a bash command in the terminal. Returns the output (stdout and stderr) of the command.".into()
     }
 
     fn input_schema(&self) -> Value {

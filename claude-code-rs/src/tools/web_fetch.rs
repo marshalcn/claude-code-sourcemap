@@ -19,11 +19,11 @@ struct WebFetchArgs {
 
 #[async_trait]
 impl Tool for WebFetchTool {
-    fn name(&self) -> &'static str { "WebFetch" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "WebFetch".into() }
     
-    fn description(&self) -> &'static str { 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
         "Fetches the content of a URL and optionally applies a prompt to process it. 
-IMPORTANT: WebFetch WILL FAIL for authenticated or private URLs. Before using this tool, check if the URL points to an authenticated service." 
+IMPORTANT: WebFetch WILL FAIL for authenticated or private URLs. Before using this tool, check if the URL points to an authenticated service.".into()
     }
 
     fn input_schema(&self) -> Value {

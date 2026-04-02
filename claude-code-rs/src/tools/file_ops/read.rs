@@ -19,10 +19,10 @@ struct FileReadArgs {
 
 #[async_trait]
 impl Tool for FileReadTool {
-    fn name(&self) -> &'static str { "file_read" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "FileRead".into() }
     
-    fn description(&self) -> &'static str { 
-        "Read the contents of a file. Returns file content." 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Read the contents of a file. Returns file content.".into() 
     }
 
     fn input_schema(&self) -> Value {

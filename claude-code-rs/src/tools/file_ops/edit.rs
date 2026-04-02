@@ -21,10 +21,10 @@ struct FileEditArgs {
 
 #[async_trait]
 impl Tool for FileEditTool {
-    fn name(&self) -> &'static str { "file_edit" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "FileEdit".into() }
     
-    fn description(&self) -> &'static str { 
-        "Edit a file by finding a specific string block and replacing it. This is useful for editing existing code." 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Edit a file by finding a specific string block and replacing it. This is useful for editing existing code.".into()
     }
 
     fn input_schema(&self) -> Value {

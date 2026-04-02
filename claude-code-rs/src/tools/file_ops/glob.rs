@@ -19,13 +19,13 @@ struct GlobArgs {
 
 #[async_trait]
 impl Tool for GlobTool {
-    fn name(&self) -> &'static str { "Glob" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "Glob".into() }
     
-    fn description(&self) -> &'static str { 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
         "- Fast file pattern matching tool that works with any codebase size
 - Supports glob patterns like \"/*.js\" or \"src/**/*.ts\"
 - Returns matching file paths sorted by modification time
-- Use this tool when you need to find files by name patterns" 
+- Use this tool when you need to find files by name patterns".into()
     }
 
     fn input_schema(&self) -> Value {

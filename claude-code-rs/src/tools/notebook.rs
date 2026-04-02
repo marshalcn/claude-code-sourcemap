@@ -29,10 +29,10 @@ fn default_edit_mode() -> String {
 
 #[async_trait]
 impl Tool for NotebookEditTool {
-    fn name(&self) -> &'static str { "NotebookEdit" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "NotebookEdit".into() }
     
-    fn description(&self) -> &'static str { 
-        "Edit Jupyter notebook cells (.ipynb). Allows replacing, inserting, or deleting cells." 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Edit Jupyter notebook cells (.ipynb). Allows replacing, inserting, or deleting cells.".into()
     }
 
     fn input_schema(&self) -> Value {

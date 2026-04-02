@@ -20,10 +20,10 @@ struct FileWriteArgs {
 
 #[async_trait]
 impl Tool for FileWriteTool {
-    fn name(&self) -> &'static str { "file_write" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "FileWrite".into() }
     
-    fn description(&self) -> &'static str { 
-        "Write text to a file, overwriting its current contents." 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Write text to a file, overwriting its current contents.".into() 
     }
 
     fn input_schema(&self) -> Value {

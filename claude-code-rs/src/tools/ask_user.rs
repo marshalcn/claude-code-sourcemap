@@ -39,10 +39,10 @@ struct AskUserQuestionArgs {
 
 #[async_trait]
 impl Tool for AskUserQuestionTool {
-    fn name(&self) -> &'static str { "AskUserQuestion" }
+    fn name(&self) -> std::borrow::Cow<'static, str> { "AskUserQuestion".into() }
     
-    fn description(&self) -> &'static str { 
-        "Asks the user multiple choice questions to gather information, clarify ambiguity, understand preferences, make decisions or offer them choices." 
+    fn description(&self) -> std::borrow::Cow<'static, str> { 
+        "Asks the user multiple choice questions to gather information, clarify ambiguity, understand preferences, make decisions or offer them choices.".into()
     }
 
     fn input_schema(&self) -> Value {

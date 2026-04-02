@@ -3,19 +3,21 @@ pub mod file_ops;
 pub mod ask_user;
 pub mod web_fetch;
 pub mod notebook;
+pub mod mcp;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::Value;
+use std::borrow::Cow;
 use crate::api::ToolDefinition;
 
 #[async_trait]
 pub trait Tool: Send + Sync {
     /// Name of the tool as exposed to Claude
-    fn name(&self) -> &'static str;
+    fn name(&self) -> Cow<'static, str>;
     
     /// Description of what the tool does
-    fn description(&self) -> &'static str;
+    fn description(&self) -> Cow<'static, str>;
     
     /// Input schema for the tool (JSON Schema format)
     fn input_schema(&self) -> Value;
@@ -38,3 +40,4 @@ pub use file_ops::{FileReadTool, FileWriteTool, FileEditTool, GlobTool, GrepTool
 pub use ask_user::AskUserQuestionTool;
 pub use web_fetch::WebFetchTool;
 pub use notebook::NotebookEditTool;
+pub use mcp::{ListMcpResourcesTool, ReadMcpResourceTool, McpToolWrapper};
