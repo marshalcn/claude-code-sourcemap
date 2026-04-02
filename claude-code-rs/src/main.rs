@@ -42,6 +42,8 @@ async fn main() -> Result<()> {
     
     // Register basic tools
     agent.register_tool(Box::new(tools::BashTool::new()));
+    agent.register_tool(Box::new(tools::FileReadTool::new()));
+    agent.register_tool(Box::new(tools::FileWriteTool::new()));
     agent.register_tool(Box::new(tools::FileEditTool::new()));
 
     // Run the main interactive loop or process single prompt
