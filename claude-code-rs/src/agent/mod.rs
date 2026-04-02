@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crate::api::{Client, Message, Role, ContentBlock, CreateMessageRequest};
 use crate::tools::Tool;
+use crate::memory::MemoryRetriever;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -18,17 +19,27 @@ pub struct Agent {
     tools: HashMap<String, Box<dyn Tool>>,
     api_client: Option<Client>,
     conversation_history: Vec<Message>,
+    memory_retriever: Option<MemoryRetriever>,
 }
 
 impl Agent {
     pub fn new() -> Self {
         let api_key = std::env::var("ANTHROPIC_API_KEY").ok();
         let api_client = api_key.and_then(|k| Client::new(k).ok());
+        
+        let memory_retriever = if let Some(ref client) = api_client {
+            // Check if .claude/memory directory exists, if not, it will be handled gracefully by scanner
+            let memory_dir = std::env::current_dir().unwrap_or_default().join(".claude").join("memory");
+            Some(MemoryRetriever::new(memory_dir, client.clone()))
+        } else {
+            None
+        };
 
         Self {
             tools: HashMap::new(),
             api_client,
             conversation_history: Vec::new(),
+            memory_retriever,
         }
     }
 
@@ -49,9 +60,45 @@ impl Agent {
             println!("User: {}", prompt);
         }
         
+        let mut final_prompt = prompt.to_string();
+
+        // Dynamically retrieve and inject relevant memories
+        if let Some(ref retriever) = self.memory_retriever {
+            if let Some(ref tx) = tx {
+                let _ = tx.send(AgentEvent::Message("Scanning memories...".to_string())).await;
+            }
+            
+            match retriever.find_relevant_memories(prompt, 5).await {
+                Ok(memories) if !memories.is_empty() => {
+                    let mut injected_context = String::from("\n\n<system-reminder>\nRelevant Context & Memories from your previous interactions:\n");
+                    for mem in memories {
+                        injected_context.push_str(&mem);
+                    }
+                    injected_context.push_str("\n</system-reminder>");
+                    
+                    final_prompt.push_str(&injected_context);
+                    
+                    if let Some(ref tx) = tx {
+                        let _ = tx.send(AgentEvent::Message("Found relevant context from memory.".to_string())).await;
+                    }
+                }
+                Ok(_) => {
+                    // No relevant memories found
+                }
+                Err(e) => {
+                    let err_msg = format!("Warning: Failed to retrieve memories: {}", e);
+                    if let Some(ref tx) = tx {
+                        let _ = tx.send(AgentEvent::Error(err_msg)).await;
+                    } else {
+                        eprintln!("{}", err_msg);
+                    }
+                }
+            }
+        }
+        
         self.conversation_history.push(Message {
             role: Role::User,
-            content: vec![ContentBlock::Text { text: prompt.to_string() }],
+            content: vec![ContentBlock::Text { text: final_prompt }],
         });
 
         // Run the agent loop (call API, execute tools, respond back)

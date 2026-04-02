@@ -5,6 +5,7 @@ use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 
+#[derive(Clone)]
 pub struct Client {
     http_client: reqwest::Client,
 }
