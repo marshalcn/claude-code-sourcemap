@@ -1,5 +1,5 @@
 use super::{app::{App, AppState}, tui::Tui};
-use crate::agent::Agent;
+use crate::agent::{Agent, AgentEvent};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
@@ -9,17 +9,19 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use std::time::Duration;
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
 use tui_textarea::Input;
 
-pub async fn start_repl(agent: &mut Agent) -> Result<()> {
+pub async fn start_repl(agent: Agent) -> Result<()> {
     let mut tui = Tui::init()?;
     let mut app = App::new();
 
     // Channel for async agent responses
     let (tx, mut rx) = mpsc::channel(32);
+    let agent_arc = Arc::new(Mutex::new(agent));
 
-    let res = run_loop(&mut tui, &mut app, agent, tx, &mut rx).await;
+    let res = run_loop(&mut tui, &mut app, agent_arc, tx, &mut rx).await;
     
     Tui::restore()?;
     res
@@ -28,9 +30,9 @@ pub async fn start_repl(agent: &mut Agent) -> Result<()> {
 async fn run_loop(
     tui: &mut Tui,
     app: &mut App<'_>,
-    _agent: &mut Agent, // Agent will be used here later
-    tx: mpsc::Sender<String>,
-    rx: &mut mpsc::Receiver<String>,
+    agent: Arc<Mutex<Agent>>,
+    tx: mpsc::Sender<AgentEvent>,
+    rx: &mut mpsc::Receiver<AgentEvent>,
 ) -> Result<()> {
     loop {
         if app.should_quit {
@@ -55,6 +57,7 @@ async fn run_loop(
                     "Claude" => Color::Green,
                     "System" => Color::Yellow,
                     "Tool" => Color::Magenta,
+                    "Error" => Color::Red,
                     _ => Color::White,
                 };
                 
@@ -86,9 +89,34 @@ async fn run_loop(
         })?;
 
         // Handle Async Agent Messages
-        if let Ok(msg) = rx.try_recv() {
-            app.add_message("Claude", &msg);
-            app.state = AppState::Input;
+        while let Ok(event) = rx.try_recv() {
+            match event {
+                AgentEvent::Message(text) => {
+                    app.add_message("Claude", &text);
+                }
+                AgentEvent::Thinking => {
+                    app.state = AppState::Thinking;
+                }
+                AgentEvent::ToolCall(name, input) => {
+                    app.add_message("Tool", &format!("Call: {} ({})", name, input));
+                    app.state = AppState::ExecutingTool;
+                }
+                AgentEvent::ToolResult(name, res) => {
+                    let result_str = match res {
+                        Ok(val) => format!("Result [{}]: {}", name, val),
+                        Err(e) => format!("Error [{}]: {}", name, e),
+                    };
+                    app.add_message("Tool", &result_str);
+                    app.state = AppState::Thinking;
+                }
+                AgentEvent::Error(err) => {
+                    app.add_message("Error", &err);
+                    app.state = AppState::Input;
+                }
+                AgentEvent::Finished => {
+                    app.state = AppState::Input;
+                }
+            }
         }
 
         // Handle Input Events (Non-blocking)
@@ -118,12 +146,15 @@ async fn run_loop(
                                     
                                     app.state = AppState::Thinking;
 
-                                    // TODO: Actually spawn the agent run task here
-                                    // For now, we simulate a response
                                     let tx_clone = tx.clone();
+                                    let agent_clone = agent.clone();
+                                    let prompt_clone = prompt.clone();
                                     tokio::spawn(async move {
-                                        tokio::time::sleep(Duration::from_secs(1)).await;
-                                        let _ = tx_clone.send("I received your message! API integration coming soon.".to_string()).await;
+                                        let mut locked_agent = agent_clone.lock().await;
+                                        if let Err(e) = locked_agent.run_single(&prompt_clone, Some(tx_clone.clone())).await {
+                                            let _ = tx_clone.send(AgentEvent::Error(format!("Failed to run agent: {}", e))).await;
+                                            let _ = tx_clone.send(AgentEvent::Finished).await;
+                                        }
                                     });
                                 }
                             }

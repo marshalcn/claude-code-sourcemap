@@ -49,10 +49,10 @@ async fn main() -> Result<()> {
     // Run the main interactive loop or process single prompt
     if let Some(prompt) = cli.prompt {
         info!("Running single prompt: {}", prompt);
-        agent.run_single(&prompt).await?;
+        agent.run_single(&prompt, None).await?;
     } else {
         info!("Entering interactive REPL mode...");
-        ui::repl::start_repl(&mut agent).await?;
+        ui::repl::start_repl(agent).await?;
     }
 
     Ok(())

@@ -7,6 +7,7 @@ const ANTHROPIC_VERSION: &str = "2023-06-01";
 
 pub struct Client {
     http_client: reqwest::Client,
+    #[allow(dead_code)]
     api_key: String,
 }
 

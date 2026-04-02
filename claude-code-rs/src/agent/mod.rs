@@ -1,7 +1,18 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use crate::api::{Client, Message, Role, ContentBlock, CreateMessageRequest};
 use crate::tools::Tool;
 use std::collections::HashMap;
+use tokio::sync::mpsc;
+
+#[derive(Debug, Clone)]
+pub enum AgentEvent {
+    Message(String),
+    Thinking,
+    ToolCall(String, String),
+    ToolResult(String, Result<String, String>),
+    Error(String),
+    Finished,
+}
 
 pub struct Agent {
     tools: HashMap<String, Box<dyn Tool>>,
@@ -25,13 +36,18 @@ impl Agent {
         self.tools.insert(tool.name().to_string(), tool);
     }
 
-    pub async fn run_single(&mut self, prompt: &str) -> Result<()> {
+    pub async fn run_single(&mut self, prompt: &str, tx: Option<mpsc::Sender<AgentEvent>>) -> Result<()> {
         if self.api_client.is_none() {
-            eprintln!("Warning: ANTHROPIC_API_KEY is not set. API calls will fail.");
-            eprintln!("(Hint: export ANTHROPIC_API_KEY='sk-ant-...')\n");
+            let msg = "Warning: ANTHROPIC_API_KEY is not set. API calls will fail.\n(Hint: export ANTHROPIC_API_KEY='sk-ant-...')\n";
+            eprintln!("{}", msg);
+            if let Some(ref tx) = tx {
+                let _ = tx.send(AgentEvent::Error(msg.to_string())).await;
+            }
         }
 
-        println!("User: {}", prompt);
+        if tx.is_none() {
+            println!("User: {}", prompt);
+        }
         
         self.conversation_history.push(Message {
             role: Role::User,
@@ -39,15 +55,25 @@ impl Agent {
         });
 
         // Run the agent loop (call API, execute tools, respond back)
-        self.run_loop().await?;
+        self.run_loop(tx.clone()).await?;
+
+        if let Some(ref tx) = tx {
+            let _ = tx.send(AgentEvent::Finished).await;
+        }
 
         Ok(())
     }
 
-    async fn run_loop(&mut self) -> Result<()> {
+    async fn run_loop(&mut self, tx: Option<mpsc::Sender<AgentEvent>>) -> Result<()> {
         let client = match &self.api_client {
             Some(c) => c,
-            None => return Err(anyhow::anyhow!("API client is not initialized. Please set ANTHROPIC_API_KEY.")),
+            None => {
+                let err = "API client is not initialized. Please set ANTHROPIC_API_KEY.";
+                if let Some(ref tx) = tx {
+                    let _ = tx.send(AgentEvent::Error(err.to_string())).await;
+                }
+                return Err(anyhow::anyhow!("{}", err));
+            }
         };
 
         loop {
@@ -61,7 +87,12 @@ impl Agent {
                 tools: tools_def,
             };
 
-            println!("> Thinking...");
+            if let Some(ref tx) = tx {
+                let _ = tx.send(AgentEvent::Thinking).await;
+            } else {
+                println!("> Thinking...");
+            }
+            
             let response = client.create_message(req).await?;
             
             // Add assistant's response to history
@@ -76,31 +107,55 @@ impl Agent {
             for block in &response.content {
                 match block {
                     ContentBlock::Text { text } => {
-                        println!("Claude: {}", text);
+                        if let Some(ref tx) = tx {
+                            let _ = tx.send(AgentEvent::Message(text.clone())).await;
+                        } else {
+                            println!("Claude: {}", text);
+                        }
                     }
                     ContentBlock::ToolUse { id, name, input } => {
                         expects_tool_result = true;
-                        println!("> Tool Call: {} ({})", name, input);
                         
-                        let result_content = if let Some(tool) = self.tools.get(name) {
+                        if let Some(ref tx) = tx {
+                            let _ = tx.send(AgentEvent::ToolCall(name.clone(), input.to_string())).await;
+                        } else {
+                            println!("> Tool Call: {} ({})", name, input);
+                        }
+                        
+                        let (result_content, is_error) = if let Some(tool) = self.tools.get(name) {
                             match tool.execute(input.clone()).await {
                                 Ok(out) => {
-                                    println!("> Tool Result: [Success]");
-                                    out
+                                    if let Some(ref tx) = tx {
+                                        let _ = tx.send(AgentEvent::ToolResult(name.clone(), Ok(out.clone()))).await;
+                                    } else {
+                                        println!("> Tool Result: [Success]");
+                                    }
+                                    (out, false)
                                 },
                                 Err(e) => {
-                                    println!("> Tool Error: {}", e);
-                                    format!("Error: {}", e)
+                                    let err_msg = format!("{}", e);
+                                    if let Some(ref tx) = tx {
+                                        let _ = tx.send(AgentEvent::ToolResult(name.clone(), Err(err_msg.clone()))).await;
+                                    } else {
+                                        println!("> Tool Error: {}", err_msg);
+                                    }
+                                    (format!("Error: {}", err_msg), true)
                                 }
                             }
                         } else {
-                            format!("Error: Tool '{}' not found", name)
+                            let err_msg = format!("Tool '{}' not found", name);
+                            if let Some(ref tx) = tx {
+                                let _ = tx.send(AgentEvent::ToolResult(name.clone(), Err(err_msg.clone()))).await;
+                            } else {
+                                println!("> Tool Error: {}", err_msg);
+                            }
+                            (format!("Error: {}", err_msg), true)
                         };
 
                         tool_results.push(ContentBlock::ToolResult {
                             tool_use_id: id.clone(),
                             content: vec![ContentBlock::Text { text: result_content }],
-                            is_error: None,
+                            is_error: if is_error { Some(true) } else { None },
                         });
                     }
                     _ => {}
