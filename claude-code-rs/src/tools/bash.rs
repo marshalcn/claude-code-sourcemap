@@ -2,7 +2,7 @@ use super::Tool;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::process::Stdio;
 use tokio::process::Command;
 
@@ -29,11 +29,23 @@ impl Tool for BashTool {
         "Execute a bash command in the terminal. Useful for running scripts, checking git status, or running tests."
     }
 
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The bash command to execute"
+                }
+            },
+            "required": ["command"]
+        })
+    }
+
     async fn execute(&self, args: Value) -> Result<String> {
         let args: BashArgs = serde_json::from_value(args)
             .context("Failed to parse BashArgs. Expected { 'command': '...' }")?;
 
-        // Execute bash command using tokio
         let output = Command::new("bash")
             .arg("-c")
             .arg(&args.command)

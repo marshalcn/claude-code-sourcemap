@@ -2,7 +2,7 @@ use super::Tool;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -24,7 +24,20 @@ impl Tool for FileReadTool {
     fn name(&self) -> &'static str { "file_read" }
     
     fn description(&self) -> &'static str { 
-        "Read the contents of a file. Returns file content. Requires { 'file_path': 'path/to/file' }" 
+        "Read the contents of a file. Returns file content." 
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to read"
+                }
+            },
+            "required": ["file_path"]
+        })
     }
 
     async fn execute(&self, args: Value) -> Result<String> {
@@ -58,7 +71,24 @@ impl Tool for FileWriteTool {
     fn name(&self) -> &'static str { "file_write" }
     
     fn description(&self) -> &'static str { 
-        "Write text to a file, overwriting its current contents. Requires { 'file_path': '...', 'file_text': '...' }" 
+        "Write text to a file, overwriting its current contents." 
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Absolute or relative path to the file to write"
+                },
+                "file_text": {
+                    "type": "string",
+                    "description": "The complete text content to write into the file"
+                }
+            },
+            "required": ["file_path", "file_text"]
+        })
     }
 
     async fn execute(&self, args: Value) -> Result<String> {
@@ -93,7 +123,28 @@ impl Tool for FileEditTool {
     fn name(&self) -> &'static str { "file_edit" }
     
     fn description(&self) -> &'static str { 
-        "Edit a file by finding a specific string block and replacing it. Requires { 'file_path': '...', 'old_str': '...', 'new_str': '...' }" 
+        "Edit a file by finding a specific string block and replacing it. This is useful for editing existing code." 
+    }
+
+    fn input_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the file to edit"
+                },
+                "old_str": {
+                    "type": "string",
+                    "description": "The exact contiguous block of text to replace. Must match the file contents perfectly including whitespace and indentation."
+                },
+                "new_str": {
+                    "type": "string",
+                    "description": "The new block of text that will replace old_str."
+                }
+            },
+            "required": ["file_path", "old_str", "new_str"]
+        })
     }
 
     async fn execute(&self, args: Value) -> Result<String> {
@@ -105,7 +156,7 @@ impl Tool for FileEditTool {
             .context(format!("Failed to read file: {}", args.file_path.display()))?;
             
         if !content.contains(&args.old_str) {
-            return Err(anyhow::anyhow!("The target string 'old_str' was not found in the file."));
+            return Err(anyhow::anyhow!("The target string 'old_str' was not found in the file. Make sure indentation matches exactly."));
         }
         
         let new_content = content.replace(&args.old_str, &args.new_str);
