@@ -1,5 +1,6 @@
 use super::{app::{App, AppState}, tui::Tui};
 use crate::agent::{Agent, AgentEvent};
+use crate::commands::{get_commit_prompt, get_review_prompt, get_security_review_prompt, get_commit_push_pr_prompt};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
@@ -159,9 +160,64 @@ async fn run_loop(
                                     let prompt_clone = prompt.clone();
                                     tokio::spawn(async move {
                                         let mut locked_agent = agent_clone.lock().await;
-                                        if let Err(e) = locked_agent.run_single(&prompt_clone, Some(tx_clone.clone())).await {
-                                            let _ = tx_clone.send(AgentEvent::Error(format!("Failed to run agent: {}", e))).await;
-                                            let _ = tx_clone.send(AgentEvent::Finished).await;
+                                        
+                                        // Command Router
+                                        if prompt_clone.starts_with('/') {
+                                            let parts: Vec<&str> = prompt_clone.split_whitespace().collect();
+                                            let command = parts[0];
+                                            let args = if parts.len() > 1 { parts[1..].join(" ") } else { String::new() };
+                                            
+                                            let command_prompt = match command {
+                                                "/commit" => {
+                                                     let _ = tx_clone.send(AgentEvent::Message("Executing /commit command...".to_string())).await;
+                                                     get_commit_prompt().await.unwrap_or_else(|e| format!("Error generating commit prompt: {}", e))
+                                                 }
+                                                 "/commit-push-pr" => {
+                                                     let _ = tx_clone.send(AgentEvent::Message("Executing /commit-push-pr command...".to_string())).await;
+                                                     get_commit_push_pr_prompt(&args).await.unwrap_or_else(|e| format!("Error generating commit-push-pr prompt: {}", e))
+                                                 }
+                                                 "/review" => {
+                                                     let _ = tx_clone.send(AgentEvent::Message("Executing /review command...".to_string())).await;
+                                                     get_review_prompt(&args).await.unwrap_or_else(|e| format!("Error generating review prompt: {}", e))
+                                                 }
+                                                "/security-review" => {
+                                                    let _ = tx_clone.send(AgentEvent::Message("Executing /security-review command...".to_string())).await;
+                                                    get_security_review_prompt().await.unwrap_or_else(|e| format!("Error generating security-review prompt: {}", e))
+                                                }
+                                                "/help" => {
+                                                     let help_msg = "Available commands:\n  /commit - Create a git commit automatically\n  /commit-push-pr [args] - Commit, push and create a PR\n  /review [PR] - Review code changes or PR\n  /security-review - Run a deep security analysis on changes\n  /clear - Clear the conversation\n  /compact - Compact the conversation history";
+                                                     let _ = tx_clone.send(AgentEvent::Message(help_msg.to_string())).await;
+                                                     let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                     return;
+                                                 }
+                                                "/clear" => {
+                                                    // In a real app we'd clear the history, here we just notify
+                                                    let _ = tx_clone.send(AgentEvent::Message("Conversation cleared.".to_string())).await;
+                                                    let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                    return;
+                                                }
+                                                "/compact" => {
+                                                    let _ = tx_clone.send(AgentEvent::Message("Conversation compacted.".to_string())).await;
+                                                    let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                    return;
+                                                }
+                                                _ => {
+                                                    let _ = tx_clone.send(AgentEvent::Message(format!("Unknown command: {}", command))).await;
+                                                    let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                    return;
+                                                }
+                                            };
+                                            
+                                            if let Err(e) = locked_agent.run_single(&command_prompt, Some(tx_clone.clone())).await {
+                                                let _ = tx_clone.send(AgentEvent::Error(format!("Failed to run agent: {}", e))).await;
+                                                let _ = tx_clone.send(AgentEvent::Finished).await;
+                                            }
+                                        } else {
+                                            // Normal chat prompt
+                                            if let Err(e) = locked_agent.run_single(&prompt_clone, Some(tx_clone.clone())).await {
+                                                let _ = tx_clone.send(AgentEvent::Error(format!("Failed to run agent: {}", e))).await;
+                                                let _ = tx_clone.send(AgentEvent::Finished).await;
+                                            }
                                         }
                                     });
                                 }

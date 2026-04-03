@@ -6,6 +6,7 @@ pub mod services;
 pub mod tools;
 pub mod ui;
 pub mod utils;
+pub mod commands;
 
 use anyhow::Result;
 use clap::Parser;
