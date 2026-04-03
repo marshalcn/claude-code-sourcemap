@@ -1,6 +1,6 @@
 use super::{app::{App, AppState}, tui::Tui};
 use crate::agent::{Agent, AgentEvent};
-use crate::commands::{get_commit_prompt, get_review_prompt, get_security_review_prompt, get_commit_push_pr_prompt};
+use crate::commands::{get_commit_prompt, get_review_prompt, get_security_review_prompt, get_commit_push_pr_prompt, AdvisorCommand, BriefCommand};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
@@ -184,8 +184,22 @@ async fn run_loop(
                                                     let _ = tx_clone.send(AgentEvent::Message("Executing /security-review command...".to_string())).await;
                                                     get_security_review_prompt().await.unwrap_or_else(|e| format!("Error generating security-review prompt: {}", e))
                                                 }
-                                                "/help" => {
-                                                     let help_msg = "Available commands:\n  /commit - Create a git commit automatically\n  /commit-push-pr [args] - Commit, push and create a PR\n  /review [PR] - Review code changes or PR\n  /security-review - Run a deep security analysis on changes\n  /clear - Clear the conversation\n  /compact - Compact the conversation history";
+                                                "/brief" => {
+                                                     // Toggle brief mode
+                                                     // In a real app, this state would be persisted in AppState
+                                                     let (_new_state, display_msg, _sys_reminder) = BriefCommand::toggle_brief_mode(false).unwrap();
+                                                     let _ = tx_clone.send(AgentEvent::Message(display_msg)).await;
+                                                     let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                     return;
+                                                 }
+                                                 "/advisor" => {
+                                                     let (display_msg, _) = AdvisorCommand::handle_advisor(&args, None, "claude-3-5-sonnet-20241022").unwrap();
+                                                     let _ = tx_clone.send(AgentEvent::Message(display_msg)).await;
+                                                     let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                     return;
+                                                 }
+                                                 "/help" => {
+                                                     let help_msg = "Available commands:\n  /commit - Create a git commit automatically\n  /commit-push-pr [args] - Commit, push and create a PR\n  /review [PR] - Review code changes or PR\n  /security-review - Run a deep security analysis on changes\n  /advisor [model] - Configure the advisor model\n  /brief - Toggle brief-only mode\n  /clear - Clear the conversation\n  /compact - Compact the conversation history";
                                                      let _ = tx_clone.send(AgentEvent::Message(help_msg.to_string())).await;
                                                      let _ = tx_clone.send(AgentEvent::Finished).await;
                                                      return;
