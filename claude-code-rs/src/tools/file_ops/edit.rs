@@ -1,4 +1,5 @@
 use crate::tools::Tool;
+use crate::utils::{GLOBAL_PERMISSION_MANAGER, ActionType};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -51,7 +52,12 @@ impl Tool for FileEditTool {
     async fn execute(&self, args: Value) -> Result<String> {
         let args: FileEditArgs = serde_json::from_value(args)
             .context("Failed to parse FileEditArgs")?;
-            
+
+        let action = ActionType::FileEdit(args.file_path.to_string_lossy().into_owned());
+        if !GLOBAL_PERMISSION_MANAGER.check_approval(&action).await? {
+            return Ok("User denied permission to edit this file.".to_string());
+        }
+
         let content = fs::read_to_string(&args.file_path)
             .await
             .context(format!("Failed to read file: {}", args.file_path.display()))?;

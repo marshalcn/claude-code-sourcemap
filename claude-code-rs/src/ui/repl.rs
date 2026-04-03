@@ -1,6 +1,6 @@
 use super::{app::{App, AppState}, tui::Tui};
 use crate::agent::{Agent, AgentEvent};
-use crate::commands::{get_commit_prompt, get_review_prompt, get_security_review_prompt, get_commit_push_pr_prompt, AdvisorCommand, BriefCommand};
+use crate::commands::{get_commit_prompt, get_review_prompt, get_security_review_prompt, get_commit_push_pr_prompt, AdvisorCommand, BriefCommand, ClearCommand, CompactCommand, McpCommand};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
@@ -199,19 +199,26 @@ async fn run_loop(
                                                      return;
                                                  }
                                                  "/help" => {
-                                                     let help_msg = "Available commands:\n  /commit - Create a git commit automatically\n  /commit-push-pr [args] - Commit, push and create a PR\n  /review [PR] - Review code changes or PR\n  /security-review - Run a deep security analysis on changes\n  /advisor [model] - Configure the advisor model\n  /brief - Toggle brief-only mode\n  /clear - Clear the conversation\n  /compact - Compact the conversation history";
+                                                     let help_msg = "Available commands:\n  /commit - Create a git commit automatically\n  /commit-push-pr [args] - Commit, push and create a PR\n  /review [PR] - Review code changes or PR\n  /security-review - Run a deep security analysis on changes\n  /advisor [model] - Configure the advisor model\n  /brief - Toggle brief-only mode\n  /mcp [args] - Manage MCP servers\n  /clear - Clear the conversation\n  /compact - Compact the conversation history";
                                                      let _ = tx_clone.send(AgentEvent::Message(help_msg.to_string())).await;
                                                      let _ = tx_clone.send(AgentEvent::Finished).await;
                                                      return;
                                                  }
+                                                "/mcp" => {
+                                                    let msg = McpCommand::handle_mcp(&args).await.unwrap_or_else(|e| format!("MCP command error: {}", e));
+                                                    let _ = tx_clone.send(AgentEvent::Message(msg)).await;
+                                                    let _ = tx_clone.send(AgentEvent::Finished).await;
+                                                    return;
+                                                }
                                                 "/clear" => {
-                                                    // In a real app we'd clear the history, here we just notify
-                                                    let _ = tx_clone.send(AgentEvent::Message("Conversation cleared.".to_string())).await;
+                                                    let msg = ClearCommand::handle_clear(&mut locked_agent.conversation_history).unwrap_or_else(|e| format!("Clear error: {}", e));
+                                                    let _ = tx_clone.send(AgentEvent::Message(msg)).await;
                                                     let _ = tx_clone.send(AgentEvent::Finished).await;
                                                     return;
                                                 }
                                                 "/compact" => {
-                                                    let _ = tx_clone.send(AgentEvent::Message("Conversation compacted.".to_string())).await;
+                                                    let msg = CompactCommand::handle_compact(&args, &mut locked_agent.conversation_history).await.unwrap_or_else(|e| format!("Compact error: {}", e));
+                                                    let _ = tx_clone.send(AgentEvent::Message(msg)).await;
                                                     let _ = tx_clone.send(AgentEvent::Finished).await;
                                                     return;
                                                 }

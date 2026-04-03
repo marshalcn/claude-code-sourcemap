@@ -1,4 +1,5 @@
-use super::Tool;
+use crate::tools::Tool;
+use crate::utils::{GLOBAL_PERMISSION_MANAGER, ActionType};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -44,6 +45,13 @@ impl Tool for BashTool {
         let args: BashArgs = serde_json::from_value(args)
             .context("Failed to parse BashArgs. Expected { 'command': '...' }")?;
 
+        // 1. Permission check
+        let action = ActionType::BashCommand(args.command.clone());
+        if !GLOBAL_PERMISSION_MANAGER.check_approval(&action).await? {
+            return Ok("User denied permission to execute the bash command.".to_string());
+        }
+
+        // 2. Command execution
         let output = Command::new("bash")
             .arg("-c")
             .arg(&args.command)

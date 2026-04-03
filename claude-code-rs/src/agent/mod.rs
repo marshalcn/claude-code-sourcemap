@@ -19,9 +19,9 @@ pub enum AgentEvent {
 }
 
 pub struct Agent {
-    tools: HashMap<String, Box<dyn Tool>>,
+    pub tools: HashMap<String, Box<dyn Tool>>,
     api_client: Option<Client>,
-    conversation_history: Vec<Message>,
+    pub conversation_history: Vec<Message>,
     memory_retriever: Option<MemoryRetriever>,
     pub cost_tracker: Arc<CostTracker>,
     pub rate_limit_tracker: Arc<RateLimitTracker>,

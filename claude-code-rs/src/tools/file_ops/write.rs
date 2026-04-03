@@ -1,4 +1,5 @@
 use crate::tools::Tool;
+use crate::utils::{GLOBAL_PERMISSION_MANAGER, ActionType};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -46,6 +47,11 @@ impl Tool for FileWriteTool {
     async fn execute(&self, args: Value) -> Result<String> {
         let args: FileWriteArgs = serde_json::from_value(args)
             .context("Failed to parse FileWriteArgs")?;
+
+        let action = ActionType::FileWrite(args.file_path.to_string_lossy().into_owned());
+        if !GLOBAL_PERMISSION_MANAGER.check_approval(&action).await? {
+            return Ok("User denied permission to write to this file.".to_string());
+        }
             
         fs::write(&args.file_path, &args.file_text)
             .await

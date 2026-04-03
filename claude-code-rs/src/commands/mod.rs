@@ -5,6 +5,9 @@ pub mod security_review;
 pub mod commit_push_pr;
 pub mod brief;
 pub mod advisor;
+pub mod clear;
+pub mod compact;
+pub mod mcp;
 
 pub use commit::get_commit_prompt;
 pub use review::get_review_prompt;
@@ -12,3 +15,6 @@ pub use security_review::get_security_review_prompt;
 pub use commit_push_pr::get_commit_push_pr_prompt;
 pub use brief::BriefCommand;
 pub use advisor::AdvisorCommand;
+pub use clear::ClearCommand;
+pub use compact::CompactCommand;
+pub use mcp::McpCommand;
