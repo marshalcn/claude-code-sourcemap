@@ -50,9 +50,14 @@ async fn main() -> Result<()> {
     agent.register_tool(Box::new(tools::GrepTool::new()));
     agent.register_tool(Box::new(tools::AskUserQuestionTool::new()));
     agent.register_tool(Box::new(tools::WebFetchTool::new()));
+    agent.register_tool(Box::new(tools::WebSearchTool::new()));
     agent.register_tool(Box::new(tools::NotebookEditTool::new()));
     agent.register_tool(Box::new(tools::ListMcpResourcesTool::new()));
     agent.register_tool(Box::new(tools::ReadMcpResourceTool::new()));
+    
+    // Register Advanced Tools
+    agent.register_tool(Box::new(tools::LspTool::new()));
+    agent.register_tool(Box::new(tools::AgentTool::new()));
     
     // Register Task and Plan Tools
     agent.register_tool(Box::new(tools::TodoWriteTool::new()));
