@@ -51,6 +51,16 @@ async fn main() -> Result<()> {
     agent.register_tool(Box::new(tools::AskUserQuestionTool::new()));
     agent.register_tool(Box::new(tools::WebFetchTool::new()));
     agent.register_tool(Box::new(tools::NotebookEditTool::new()));
+    agent.register_tool(Box::new(tools::ListMcpResourcesTool::new()));
+    agent.register_tool(Box::new(tools::ReadMcpResourceTool::new()));
+    
+    // Register Task and Plan Tools
+    agent.register_tool(Box::new(tools::TodoWriteTool::new()));
+    agent.register_tool(Box::new(tools::TaskCreateTool::new()));
+    agent.register_tool(Box::new(tools::TaskListTool::new()));
+    agent.register_tool(Box::new(tools::TaskUpdateTool::new()));
+    agent.register_tool(Box::new(tools::EnterPlanModeTool::new()));
+    agent.register_tool(Box::new(tools::ExitPlanModeTool::new()));
 
     // Run the main interactive loop or process single prompt
     if let Some(prompt) = cli.prompt {

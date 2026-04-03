@@ -4,6 +4,7 @@ pub mod ask_user;
 pub mod web_fetch;
 pub mod notebook;
 pub mod mcp;
+pub mod tasks;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -41,3 +42,4 @@ pub use ask_user::AskUserQuestionTool;
 pub use web_fetch::WebFetchTool;
 pub use notebook::NotebookEditTool;
 pub use mcp::{ListMcpResourcesTool, ReadMcpResourceTool, McpToolWrapper};
+pub use tasks::{TodoWriteTool, TaskCreateTool, TaskListTool, TaskUpdateTool, EnterPlanModeTool, ExitPlanModeTool};
