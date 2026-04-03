@@ -2,6 +2,7 @@ pub mod agent;
 pub mod api;
 pub mod mcp;
 pub mod memory;
+pub mod services;
 pub mod tools;
 pub mod ui;
 pub mod utils;
