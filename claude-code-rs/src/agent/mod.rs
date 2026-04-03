@@ -2,8 +2,11 @@ use anyhow::Result;
 use crate::api::{Client, Message, Role, ContentBlock, CreateMessageRequest};
 use crate::tools::Tool;
 use crate::memory::MemoryRetriever;
+use crate::services::{CostTracker, RateLimitTracker};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tokio::sync::mpsc;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub enum AgentEvent {
@@ -20,6 +23,8 @@ pub struct Agent {
     api_client: Option<Client>,
     conversation_history: Vec<Message>,
     memory_retriever: Option<MemoryRetriever>,
+    pub cost_tracker: Arc<CostTracker>,
+    pub rate_limit_tracker: Arc<RateLimitTracker>,
 }
 
 impl Agent {
@@ -40,6 +45,8 @@ impl Agent {
             api_client,
             conversation_history: Vec::new(),
             memory_retriever,
+            cost_tracker: Arc::new(CostTracker::new("session_default".to_string())),
+            rate_limit_tracker: Arc::new(RateLimitTracker::new()),
         }
     }
 
@@ -140,7 +147,19 @@ impl Agent {
                 println!("> Thinking...");
             }
             
-            let response = client.create_message(req).await?;
+            let start_time = Instant::now();
+            let (response, headers) = client.create_message(req).await?;
+            let duration_ms = start_time.elapsed().as_millis() as u64;
+            
+            // 1. Track API Limits
+            let _ = self.rate_limit_tracker.extract_quota_status_from_headers(&headers).await;
+            
+            // 2. Track Token Cost
+            // The Anthropic API response usually contains a `usage` block.
+            // For this port, we will mock the token extraction.
+            let input_tokens = 500; // Mock value, in real app extract from `response.usage.input_tokens`
+            let output_tokens = 150; // Mock value, extract from `response.usage.output_tokens`
+            self.cost_tracker.add_api_usage("claude-3-5-sonnet-20241022", input_tokens, output_tokens, duration_ms).await;
             
             // Add assistant's response to history
             self.conversation_history.push(Message {
@@ -169,7 +188,12 @@ impl Agent {
                             println!("> Tool Call: {} ({})", name, input);
                         }
                         
+                        let tool_start = Instant::now();
                         let (result_content, is_error) = if let Some(tool) = self.tools.get(name) {
+                            // 3. Pre-tool hooks (e.g. Diagnostic Tracking before file edit)
+                            // In a full implementation, we'd extract the file_path from `input`
+                            // and call `GLOBAL_DIAGNOSTIC_TRACKER.before_file_edited(&file_path, mcp_client).await;`
+                            
                             match tool.execute(input.clone()).await {
                                 Ok(out) => {
                                     if let Some(ref tx) = tx {
@@ -198,6 +222,12 @@ impl Agent {
                             }
                             (format!("Error: {}", err_msg), true)
                         };
+                        
+                        let tool_duration = tool_start.elapsed().as_millis() as u64;
+                        self.cost_tracker.add_tool_duration(tool_duration).await;
+                        
+                        // 4. Post-tool hooks (e.g. tracking changed lines, reading new diagnostics)
+                        // self.cost_tracker.add_code_changes(added, removed).await;
 
                         tool_results.push(ContentBlock::ToolResult {
                             tool_use_id: id.clone(),

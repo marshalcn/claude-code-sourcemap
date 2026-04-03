@@ -30,13 +30,15 @@ impl Client {
         })
     }
 
-    pub async fn create_message(&self, req: CreateMessageRequest) -> Result<CreateMessageResponse> {
+    pub async fn create_message(&self, req: CreateMessageRequest) -> Result<(CreateMessageResponse, reqwest::header::HeaderMap)> {
         let response = self.http_client
             .post(ANTHROPIC_API_URL)
             .json(&req)
             .send()
             .await
             .context("Failed to send request to Anthropic API")?;
+
+        let headers = response.headers().clone();
 
         if !response.status().is_success() {
             let status = response.status();
@@ -49,6 +51,6 @@ impl Client {
             .await
             .context("Failed to deserialize API response")?;
 
-        Ok(resp_data)
+        Ok((resp_data, headers))
     }
 }

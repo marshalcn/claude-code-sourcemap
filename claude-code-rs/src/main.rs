@@ -78,6 +78,11 @@ async fn main() -> Result<()> {
         agent.run_single(&prompt, None).await?;
     } else {
         info!("Entering interactive REPL mode...");
+        
+        // In a real TUI application, the exit hook (Ctrl+C) would print this.
+        // For our CLI mock, we will print it gracefully when loop ends.
+        let _cost_tracker = agent.cost_tracker.clone();
+        
         ui::repl::start_repl(agent).await?;
     }
 

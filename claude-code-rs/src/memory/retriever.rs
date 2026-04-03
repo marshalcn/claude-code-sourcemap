@@ -50,7 +50,12 @@ impl MemoryRetriever {
             tools: vec![], // No tools needed for this side-query
         };
 
-        let response = self.api_client.create_message(req).await.context("Side-query failed")?;
+        let start_time = std::time::Instant::now();
+        let (response, _headers) = self.api_client.create_message(req).await.context("Side-query failed")?;
+        let _duration = start_time.elapsed().as_millis() as u64;
+        
+        // Note: In a full integration, we would also update CostTracker with token usage for this side query here.
+
         
         let mut relevant_contents = Vec::new();
 

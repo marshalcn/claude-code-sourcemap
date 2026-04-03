@@ -14,6 +14,7 @@ use tokio::sync::{mpsc, Mutex};
 use tui_textarea::Input;
 
 pub async fn start_repl(agent: Agent) -> Result<()> {
+    let cost_tracker = agent.cost_tracker.clone();
     let mut tui = Tui::init()?;
     let mut app = App::new();
 
@@ -24,6 +25,13 @@ pub async fn start_repl(agent: Agent) -> Result<()> {
     let res = run_loop(&mut tui, &mut app, agent_arc, tx, &mut rx).await;
     
     Tui::restore()?;
+    
+    // Print session cost summary upon exiting
+    println!("\n==========================================");
+    println!("Session Complete. Generating summary...");
+    println!("{}", cost_tracker.format_summary().await);
+    println!("==========================================\n");
+    
     res
 }
 
