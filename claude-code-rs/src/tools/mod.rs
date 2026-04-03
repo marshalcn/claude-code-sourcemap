@@ -8,6 +8,10 @@ pub mod mcp;
 pub mod tasks;
 pub mod lsp;
 pub mod agent;
+pub mod config;
+pub mod brief;
+pub mod sleep;
+pub mod tool_search;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -49,3 +53,7 @@ pub use mcp::{ListMcpResourcesTool, ReadMcpResourceTool, McpToolWrapper};
 pub use tasks::{TodoWriteTool, TaskCreateTool, TaskListTool, TaskUpdateTool, EnterPlanModeTool, ExitPlanModeTool};
 pub use lsp::LspTool;
 pub use agent::AgentTool;
+pub use config::ConfigTool;
+pub use brief::BriefTool;
+pub use sleep::SleepTool;
+pub use tool_search::ToolSearchTool;

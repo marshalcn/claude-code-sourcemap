@@ -58,6 +58,10 @@ async fn main() -> Result<()> {
     // Register Advanced Tools
     agent.register_tool(Box::new(tools::LspTool::new()));
     agent.register_tool(Box::new(tools::AgentTool::new()));
+    agent.register_tool(Box::new(tools::ConfigTool::new()));
+    agent.register_tool(Box::new(tools::BriefTool::new()));
+    agent.register_tool(Box::new(tools::SleepTool::new()));
+    agent.register_tool(Box::new(tools::ToolSearchTool::new()));
     
     // Register Task and Plan Tools
     agent.register_tool(Box::new(tools::TodoWriteTool::new()));
